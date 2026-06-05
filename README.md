@@ -186,19 +186,6 @@ Then add it to the method dispatch at the top of `extra_methods.py` and re-run t
 - scVI/scANVI training is non-deterministic in some respects even with fixed seeds (PyTorch CUDA kernels are not bit-reproducible across hardware). Reported numbers should reproduce to ±0.01 retention on the same hardware family.
 - The class-balanced scANVI implementation (Intervention 6) uses inverse-frequency resampling of the reference for training and the original-frequency reference for evaluation. We do not modify scANVI's internal loss; the rebalancing is done at the data level.
 
-## Citation
-
-If you use this benchmark, please cite:
-
-```bibtex
-@inproceedings{authors2026supervision,
-  title={When Supervision Backfires: A Structural Rare-versus-Abundant Trade-off in Label-Supervised Single-Cell Integration},
-  author={...},
-  booktitle={Proceedings of the 32nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (Datasets and Benchmarks Track)},
-  year={2026}
-}
-```
-
 Please also cite the underlying datasets and methods (scVI, scANVI, scArches, scIB) as appropriate; citations are listed in the paper.
 
 ## License
@@ -208,4 +195,4 @@ Datasets: please honour the licenses of the underlying public sources, listed in
 
 ## Contact
 
-Issues and questions: please open a GitHub issue on this repository. For correspondence not appropriate for a public issue tracker, see the paper for author email.
+Issues and questions: please open a GitHub issue on this repository.
