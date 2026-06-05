@@ -1,0 +1,23 @@
+# Core scientific stack — numpy MUST be pinned to 1.26.x because scvi-tools 1.4.x
+# is incompatible with numpy 2.x (jax 0.10+ breaks scvi import otherwise).
+numpy==1.26.4
+scipy>=1.10,<2.0
+pandas>=2.0,<3.0
+
+# Single-cell + integration
+scvi-tools==1.4.2
+anndata>=0.10
+scanpy==1.11.5
+h5py>=3.8
+
+# Statistics + ML
+scikit-learn==1.3.2
+statsmodels==0.14.1  # required for scanpy cell_ranger HVG (pancreas)
+
+# Plotting (figures)
+matplotlib>=3.7
+seaborn>=0.12
+
+# Convenience
+pyyaml>=6.0
+tqdm>=4.65

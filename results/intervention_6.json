@@ -1,0 +1,200 @@
+{
+  "pbmc_cite_seed0": {
+    "scVI": {
+      "rare": 0.8622363035955096,
+      "intermediate": 0.7663980662909126,
+      "abundant": 0.9086343859179502
+    },
+    "sup_lda": {
+      "rare": 0.8735729256404996,
+      "intermediate": 0.7901698079153004,
+      "abundant": 0.9136663787223631
+    },
+    "sup_ncm": {
+      "rare": 0.8651774800660978,
+      "intermediate": 0.7770037237230254,
+      "abundant": 0.9103060738865413
+    },
+    "balanced_scanvi": {
+      "rare": 0.8343440728339628,
+      "intermediate": 0.8551942741713834,
+      "abundant": 0.9369969281858047
+    }
+  },
+  "pbmc_cite_seed1": {
+    "scVI": {
+      "rare": 0.8644396067996482,
+      "intermediate": 0.753111946691776,
+      "abundant": 0.9136423607885777
+    },
+    "sup_lda": {
+      "rare": 0.8419645857330778,
+      "intermediate": 0.7783974011994214,
+      "abundant": 0.9180389036808027
+    },
+    "sup_ncm": {
+      "rare": 0.8636851049266708,
+      "intermediate": 0.7664908938574475,
+      "abundant": 0.9156651861513219
+    },
+    "balanced_scanvi": {
+      "rare": 0.8407486501687726,
+      "intermediate": 0.8411459681370725,
+      "abundant": 0.9402609570406686
+    }
+  },
+  "pbmc_cite_seed2": {
+    "scVI": {
+      "rare": 0.8411863253750408,
+      "intermediate": 0.7537857033462095,
+      "abundant": 0.8947236494768027
+    },
+    "sup_lda": {
+      "rare": 0.8574611918101548,
+      "intermediate": 0.7753073183555955,
+      "abundant": 0.9039076769057312
+    },
+    "sup_ncm": {
+      "rare": 0.8490334078700105,
+      "intermediate": 0.7666356266320069,
+      "abundant": 0.8988843259443652
+    },
+    "balanced_scanvi": {
+      "rare": 0.8163742168902356,
+      "intermediate": 0.8549055018615086,
+      "abundant": 0.9350709358515953
+    }
+  },
+  "spleen_lymph_seed0": {
+    "scVI": {
+      "rare": 0.839082751738141,
+      "abundant": 0.7401568480729839,
+      "intermediate": 0.7969992661532508
+    },
+    "sup_lda": {
+      "rare": 0.8559970649092965,
+      "abundant": 0.7394795934495966,
+      "intermediate": 0.8132815423547531
+    },
+    "sup_ncm": {
+      "rare": 0.8380618779231496,
+      "abundant": 0.7449040047078527,
+      "intermediate": 0.8046642298571389
+    },
+    "balanced_scanvi": {
+      "rare": 0.758266990309242,
+      "abundant": 0.7680835355154865,
+      "intermediate": 0.8676295447557564
+    }
+  },
+  "spleen_lymph_seed1": {
+    "scVI": {
+      "rare": 0.8131891140623205,
+      "abundant": 0.7619610406118121,
+      "intermediate": 0.8035072001473185
+    },
+    "sup_lda": {
+      "rare": 0.8224447823111551,
+      "abundant": 0.7735606442734925,
+      "intermediate": 0.816253352330246
+    },
+    "sup_ncm": {
+      "rare": 0.8153007086714764,
+      "abundant": 0.7698571974090691,
+      "intermediate": 0.8055830698339564
+    },
+    "balanced_scanvi": {
+      "rare": 0.7307940126483723,
+      "abundant": 0.8270194432984802,
+      "intermediate": 0.8514201536598826
+    }
+  },
+  "spleen_lymph_seed2": {
+    "scVI": {
+      "rare": 0.8136151897727548,
+      "abundant": 0.7368039944389003,
+      "intermediate": 0.8057637735498455
+    },
+    "sup_lda": {
+      "rare": 0.8236558149314982,
+      "abundant": 0.7368061568624337,
+      "intermediate": 0.8166387468491975
+    },
+    "sup_ncm": {
+      "rare": 0.8202323703784421,
+      "abundant": 0.7374710893771763,
+      "intermediate": 0.8126219824289165
+    },
+    "balanced_scanvi": {
+      "rare": 0.7524104477028252,
+      "abundant": 0.8053935278474598,
+      "intermediate": 0.8533955765672401
+    }
+  },
+  "lymphoid_seed0": {
+    "scVI": {
+      "abundant": 0.8014348876283647,
+      "intermediate": 0.4803214096789395,
+      "rare": 0.7224869383490073
+    },
+    "sup_lda": {
+      "abundant": 0.7986454286715005,
+      "intermediate": 0.520501633858519,
+      "rare": 0.7180146290491118
+    },
+    "sup_ncm": {
+      "abundant": 0.8014189272748649,
+      "intermediate": 0.4963820290641745,
+      "rare": 0.7158202716823406
+    },
+    "balanced_scanvi": {
+      "abundant": 0.8476243036150389,
+      "intermediate": 0.6636456909299235,
+      "rare": 0.7560501567398119
+    }
+  },
+  "lymphoid_seed1": {
+    "scVI": {
+      "abundant": 0.7972312076805758,
+      "intermediate": 0.44929766022773365,
+      "rare": 0.693812695924765
+    },
+    "sup_lda": {
+      "abundant": 0.7921489715312494,
+      "intermediate": 0.4744421570728549,
+      "rare": 0.7407092476489028
+    },
+    "sup_ncm": {
+      "abundant": 0.7966745012102435,
+      "intermediate": 0.4650028608768866,
+      "rare": 0.7273759143155695
+    },
+    "balanced_scanvi": {
+      "abundant": 0.8591491690233716,
+      "intermediate": 0.6481229735869847,
+      "rare": 0.8118077324973877
+    }
+  },
+  "lymphoid_seed2": {
+    "scVI": {
+      "abundant": 0.8039964596107829,
+      "intermediate": 0.4750702477551693,
+      "rare": 0.7136259143155695
+    },
+    "sup_lda": {
+      "abundant": 0.7993367331443406,
+      "intermediate": 0.5025460631202026,
+      "rare": 0.7026737199582028
+    },
+    "sup_ncm": {
+      "abundant": 0.8040999806178696,
+      "intermediate": 0.479841136461056,
+      "rare": 0.7200626959247649
+    },
+    "balanced_scanvi": {
+      "abundant": 0.8529714649239538,
+      "intermediate": 0.6506072176368534,
+      "rare": 0.7560501567398119
+    }
+  }
+}

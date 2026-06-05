@@ -1,0 +1,70 @@
+# Dataset registry for scanvi-tradeoff-benchmark
+#
+# Each entry specifies:
+#   url        : public download URL
+#   label_key  : adata.obs column containing cell-type labels
+#   batch_key  : adata.obs column containing batch identifiers (used for splits)
+#   citation   : original publication
+
+datasets:
+
+  spleen_lymph:
+    url: "https://datasets.cellxgene.cziscience.com/[fill_in_from_paper]"  # see paper Section 3.2
+    label_key: celltype
+    batch_key: donor
+    citation: "Tabula Muris Senis Consortium, Nature 2020"
+    notes: |
+      Mouse secondary lymphoid tissue, 30,474 cells, 27 cell types.
+      Contains nested interferon-state annotations (Ifit3-high CD4 T, Ifit3-high CD8 T)
+      that drive the causal mechanism analysis in Section 6.
+
+  lymphoid:
+    url: "https://datasets.cellxgene.cziscience.com/[fill_in]"
+    label_key: cell_type
+    batch_key: donor_id
+    citation: "Tonsil Cell Atlas, Massoni-Badosa et al., Immunity 2024"
+    notes: "Human tonsil, 29,705 cells, 35 cell types."
+
+  pbmc_cite:
+    url: "https://atlas.fredhutch.org/data/nygc/multimodal/[fill_in]"
+    label_key: celltype.l2
+    batch_key: orig.ident
+    citation: "Hao et al., Cell 2021 (Seurat 4 multimodal reference)"
+    notes: "Human PBMC CITE-seq, 152,094 cells, 30 fine cell types."
+
+  pbmc:
+    url: "https://[10x_genomics_link]"
+    label_key: cell_type
+    batch_key: batch
+    citation: "10x Genomics public PBMC datasets"
+    notes: "Human PBMC coarse, 11,990 cells, 9 cell types. Compositionally flat (control)."
+
+  heart:
+    url: "https://datasets.cellxgene.cziscience.com/[fill_in]"
+    label_key: cell_type
+    batch_key: donor
+    citation: "Litvinukova et al., Nature 2020 (heart atlas)"
+    notes: "Human heart, 18,641 cells, 11 cell types. Compositionally flat (control)."
+
+  pancreas:
+    url: "https://figshare.com/ndownloader/files/24539828"
+    file_name: "human_pancreas_norm_complexBatch.h5ad"
+    label_key: celltype
+    batch_key: tech
+    citation: "Luecken et al., Nature Methods 2022 (scIB)"
+    notes: |
+      Human pancreas, 16,175 cells (after filtering 207 zero-libsize cells),
+      13 cell types after filtering 493 all-zero genes.
+      Mixed droplet (inDrop, CelSeq) and plate-based (smartseq2, fluidigmc1) tech;
+      requires cell_ranger HVG (not seurat_v3) due to mixed library-size distributions.
+      The figshare URL is behind AWS WAF and may require browser-based download
+      from headless servers; download manually to data/pancreas.h5ad if curl fails.
+
+# Splits used for benchmark instances. Each entry specifies which batch values
+# are held out as query; remaining batches form the reference.
+splits:
+  spleen_lymph:
+    query_batches: [auto]  # see pilot_leakage.py auto-split logic
+  pancreas:
+    query_batches: [fluidigmc1, celseq, inDrop4, smarter, inDrop2]
+    reference_batches: [inDrop3, smartseq2, celseq2, inDrop1]

@@ -1,0 +1,49 @@
+{
+  "stats": {
+    "coupling": {"n": 21, "r": 0.545, "ci_95": [0.166, 0.786], "perm_p": 0.011},
+    "tertile_sensitivity_r": {"25": 0.43, "33": 0.545, "40": 0.087, "50": 0.028}
+  },
+  "extra_methods": {
+    "summary": "sup_lda and sup_ncm: nearly flat vs scVI (|deltas|<0.012) across pbmc_cite, spleen_lymph, lymphoid. balanced_scanvi: inverts trade-off, abundant +0.032/+0.054/+0.052; rare -0.025/-0.075/+0.065.",
+    "deltas_vs_scVI": {
+      "pbmc_cite":    {"sup_lda":   {"abund": +0.006, "rare": +0.002},
+                       "sup_ncm":   {"abund": +0.003, "rare": +0.003},
+                       "balanced":  {"abund": +0.032, "rare": -0.025}},
+      "spleen_lymph": {"sup_lda":   {"abund": +0.004, "rare": +0.012},
+                       "sup_ncm":   {"abund": +0.004, "rare": +0.003},
+                       "balanced":  {"abund": +0.054, "rare": -0.075}},
+      "lymphoid":     {"sup_lda":   {"abund": -0.004, "rare": +0.010},
+                       "sup_ncm":   {"abund": -0.000, "rare": +0.011},
+                       "balanced":  {"abund": +0.052, "rare": +0.065}}
+    }
+  },
+  "k_sensitivity": {
+    "summary": "Trade-off magnitude stable across k=5,15,30,50. Abundant harm in [+0.030,+0.035]; rare gain in [+0.040,+0.047].",
+    "values": {
+      "5":  {"scVI_abund": 0.875, "scANVI_abund": 0.910, "harm_ab": +0.035,
+             "scVI_rare": 0.802, "scANVI_rare": 0.842, "gain_ra": +0.040},
+      "15": {"scVI_abund": 0.880, "scANVI_abund": 0.910, "harm_ab": +0.030,
+             "scVI_rare": 0.791, "scANVI_rare": 0.832, "gain_ra": +0.041},
+      "30": {"scVI_abund": 0.879, "scANVI_abund": 0.910, "harm_ab": +0.031,
+             "scVI_rare": 0.758, "scANVI_rare": 0.800, "gain_ra": +0.042},
+      "50": {"scVI_abund": 0.877, "scANVI_abund": 0.910, "harm_ab": +0.033,
+             "scVI_rare": 0.739, "scANVI_rare": 0.786, "gain_ra": +0.047}
+    }
+  },
+  "pancreas": {
+    "summary": "Asymmetric replication: rare benefit confirms (largest in benchmark, +0.213), abundant cost does NOT (essentially flat, +0.006). Attributed to scVI abundant baseline ceiling (~0.92).",
+    "per_seed": {
+      "seed0": {"scVI": {"abund": 0.920, "inter": 0.947, "rare": 0.327},
+                "scANVI": {"abund": 0.926, "inter": 0.943, "rare": 0.442}},
+      "seed1": {"scVI": {"abund": 0.920, "inter": 0.957, "rare": 0.253},
+                "scANVI": {"abund": 0.928, "inter": 0.937, "rare": 0.555}},
+      "seed2": {"scVI": {"abund": 0.921, "inter": 0.954, "rare": 0.220},
+                "scANVI": {"abund": 0.924, "inter": 0.944, "rare": 0.442}}
+    },
+    "mean": {
+      "scVI":   {"abund": 0.920, "inter": 0.953, "rare": 0.266},
+      "scANVI": {"abund": 0.926, "inter": 0.941, "rare": 0.480}
+    },
+    "effects": {"abund": +0.006, "inter": -0.012, "rare": +0.213}
+  }
+}
