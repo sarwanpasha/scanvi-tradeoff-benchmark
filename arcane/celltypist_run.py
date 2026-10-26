@@ -4,6 +4,7 @@ Usage: python celltypist_run.py <ds> <seed> [holdout] -> emb/<tag>_seed<s>_cellt
 """
 import os
 import sys
+import sys
 import numpy as np
 import scanpy as sc
 import anndata as ad
@@ -19,7 +20,7 @@ sc.pp.normalize_total(a, target_sum=1e4)
 sc.pp.log1p(a)
 ref, qry = a[a.obs.role == "ref"].copy(), a[a.obs.role == "query"].copy()
 if holdout:
-    ref = ref[ref.obs.label != holdout].copy()
+    ref = ref[ref.obs.label != holdout.replace("~", " ")].copy()
 np.random.seed(seed)
 model = celltypist.train(ref, labels="label", feature_selection=True, use_SGD=True, mini_batch=True,
                          n_jobs=8, max_iter=20, epochs=10, balance_cell_type=False)

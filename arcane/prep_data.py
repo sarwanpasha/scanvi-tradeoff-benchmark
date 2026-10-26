@@ -26,7 +26,7 @@ def assign_folds(a, ref_batches):
     a.obs["fold"] = a.obs.batch.map(fold).fillna(-1).astype(int)
 
 
-def finish(a, ref, qry, label, batch, parent=None, condition=None):
+def finish(a, ref, qry, label, batch, parent=None, condition=None, extra=False):
     a.obs["label"] = a.obs[label].astype(str)
     a.obs["batch"] = a.obs[batch].astype(str)
     a.obs["parent"] = a.obs[parent].astype(str) if parent else a.obs["label"]
@@ -39,7 +39,13 @@ def finish(a, ref, qry, label, batch, parent=None, condition=None):
         a.X = a.layers["counts"]
     a.X = sp.csr_matrix(a.X).astype(np.float32)
     keep = ["label", "parent", "batch", "role", "fold", "condition"]
-    a = ad.AnnData(X=a.X, obs=a.obs[keep].copy(), var=pd.DataFrame(index=a.var_names.astype(str)))
+    if extra:
+        keep += [c for c in a.obs.columns if c not in keep]
+    o = a.obs[keep].copy()
+    for c in o.columns:
+        if o[c].dtype == object or str(o[c].dtype) == "category":
+            o[c] = o[c].astype(str)
+    a = ad.AnnData(X=a.X, obs=o, var=pd.DataFrame(index=a.var_names.astype(str)))
     a.var_names_make_unique()
     a.write_h5ad(f"data/std/{name}.h5ad", compression="gzip")
     print(name, a.shape, a.obs.role.value_counts().to_dict(), "labels", a.obs.label.nunique(),
@@ -94,5 +100,51 @@ elif name == "hlca":
     if "feature_name" in a.var:
         a.var_names = a.var["feature_name"].astype(str)
     finish(a, chosen[:5], chosen[5:8], lab, bcol, parent=par)
+elif name == "hlca_full":
+    a = ad.read_h5ad("data/raw/hlca_core.h5ad", backed="r")
+    obs = a.obs
+    lab = "ann_finest_level" if "ann_finest_level" in obs else "cell_type"
+    par = "ann_level_2" if "ann_level_2" in obs else None
+    bcol = "dataset" if "dataset" in obs else "study"
+    sizes = obs[bcol].value_counts()
+    # query: every fourth study by size (about a quarter of the cells), reference: the rest
+    studies = sizes.index.tolist()
+    qry = studies[1::4]
+    ref = [s for s in studies if s not in qry]
+    print("HLCA_FULL studies", len(studies), "query", qry, flush=True)
+    a = a.to_memory()
+    if a.raw is not None:
+        a = ad.AnnData(X=a.raw.X, obs=a.obs, var=a.raw.var)
+    if "feature_name" in a.var:
+        a.var_names = a.var["feature_name"].astype(str)
+    finish(a, ref, qry, lab, bcol, parent=par)
+elif name == "lupusfull":
+    a = ad.read_h5ad("data/raw/lupusfull.h5ad")
+    o = a.obs
+    if "ct_cov" in o and "author_cell_type" in o:  # fine lymphocyte labels, myeloid/other labels from author_cell_type
+        ct = o["ct_cov"].astype(str)
+        o["fine_label"] = np.where(ct.isin(["nan", "NaN", "None", ""]), o["author_cell_type"].astype(str), ct)
+        fine = "fine_label"
+    else:
+        fine = next((c for c in ["author_cell_type", "cell_type_fine", "celltype", "cg_cov"] if c in o), "cell_type")
+    print("fine label column", fine, o[fine].value_counts().to_dict(), flush=True)
+    counts = o[fine].value_counts()
+    a = a[o[fine].isin(counts.index[counts >= 200])].copy()
+    o = a.obs
+    o["donor"] = o.donor_id.astype(str)
+    coh = next((c for c in ["Processing_Cohort", "processing_cohort", "batch_cov", "Batch", "batch"] if c in o), None)
+    anc = next((c for c in ["pop_cov", "self_reported_ethnicity"] if c in o), None)
+    dd = o.groupby("donor").agg(disease=("disease", "first"),
+                                coh=(coh, "first") if coh else ("disease", "first"),
+                                anc=(anc, "first") if anc else ("disease", "first")).reset_index()
+    rng = np.random.default_rng(0)
+    ref = []
+    for _, g in dd[dd.disease == "normal"].groupby(["coh", "anc"]):
+        d = g.donor.tolist()
+        rng.shuffle(d)
+        ref += d[: int(round(0.55 * len(d)))]
+    qry = [d for d in dd.donor if d not in ref]
+    print("lupusfull ref donors", len(ref), "query donors", len(qry), "cohort col", coh, "ancestry col", anc, flush=True)
+    finish(a, ref, qry, fine, "donor", parent="cell_type", condition="disease", extra=True)
 else:
     raise SystemExit("unknown dataset " + name)

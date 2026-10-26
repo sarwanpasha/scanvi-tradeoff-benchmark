@@ -4,9 +4,8 @@ Given kNN label evidence from a label-free (unsupervised) embedding U and a labe
 (supervised) embedding S of the same cells, ARCANE
   1. arbitrates between the two kNN labels with a rule that maximizes held-out balanced accuracy,
      estimated on reference batches that were held out during training (cross-fitting), and
-  2. returns class-conditional (Mondrian) conformal prediction sets, and
-  3. flags cells that lie far from the reference in both embeddings (scale-free kNN distance with a
-     conformal threshold) as matching no reference type.
+  2. returns class-conditional (Mondrian) conformal prediction sets whose empty sets flag cells
+     that match no reference type.
 """
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -176,3 +175,157 @@ def run_arcane(ref_U, ref_S, y_ref, tgt_U, tgt_S, cal, classes, k=15, alpha=0.1,
                 novelty_p=(1.0 + len(D_sorted) - np.searchsorted(D_sorted, D, side="left")) / (len(D_sorted) + 1.0),
                 PU=PU, PS=PS, dU=dU, dS=dS,
                 score=Sq, arbiter=arb, conformal=conf, cal_size=np.bincount(y_c, minlength=T))
+
+
+# ---------------------------------------------------------------------------------------------
+# Symmetric cross-fitting: calibration cells (held-out reference fold) and query cells
+# are embedded by the same fold model and scored against the same neighbour pool (the training
+# fold), so per-fold calibration and query scores are exchangeable under batch exchangeability.
+# Fold-wise ranks are pooled into cross-conformal p-values.
+# ---------------------------------------------------------------------------------------------
+def _fold_scores(f, classes, k, score_type="hybrid"):
+    """Scores of all target cells (cal + query) of one fold model."""
+    PU, du = knn_evidence(f["ref_U"], f["y_ref"], f["tgt_U"], classes, k)
+    PS, ds = knn_evidence(f["ref_S"], f["y_ref"], f["tgt_S"], classes, k)
+    if score_type == "knn":
+        S = 1.0 - 0.5 * (PU + PS)
+    else:
+        D = centroid_scores(f["ref_U"], f["ref_S"], f["y_ref"], f["tgt_U"], f["tgt_S"], classes)
+        S = 1.0 - 0.5 * (PU + PS) + (0.999 / (2 * k)) * D / (1.0 + D)
+    nu_u, nu_s = du / loo_scale(f["ref_U"], k), ds / loo_scale(f["ref_S"], k)
+    return dict(PU=PU, PS=PS, S=S, nu=0.5 * (nu_u + nu_s), nu_u=nu_u, nu_s=nu_s)
+
+
+def _cross_p(cal_scores, cal_groups, q_scores, q_groups, groups):
+    """Cross-conformal p-values. cal_scores/q_scores: lists over folds; groups: group ids to evaluate.
+    Returns p[q, g] = (1 + sum_f #{cal_f in g with score >= q score_f}) / (n_g + 1)."""
+    nq = len(q_scores[0])
+    out = np.ones((nq, len(groups)))
+    for j, g in enumerate(groups):
+        cnt, n = np.zeros(nq), 0
+        for cs, cg, qs in zip(cal_scores, cal_groups, q_scores):
+            s = np.sort(cs[cg == g] if cg is not None else cs)
+            n += len(s)
+            qv = qs[:, j] if qs.ndim == 2 else qs
+            cnt += len(s) - np.searchsorted(s, qv, side="left")
+        out[:, j] = (1.0 + cnt) / (n + 1.0)
+    return out
+
+
+def _fold_p(cal, q):
+    """Split-conformal p-value of query scores q against calibration scores cal (higher = less conforming)."""
+    s = np.sort(cal)
+    return (1.0 + len(s) - np.searchsorted(s, q, side="left")) / (len(s) + 1.0)
+
+
+def run_arcane_sym(full, folds, classes, k=15, alpha=0.1, alpha_unknown=0.05, objective="balanced",
+                   min_type=None, labeled_mask=None):
+    """ARCANE with symmetric cross-fitting.
+
+    full: npz dict of the full model (ref_*, y_ref, tgt_* for query cells).
+    folds: list of npz dicts of fold models whose targets are held-out fold cells (tgt_role 'cal')
+           followed by the query cells (tgt_role 'query'), in the same query order as `full`.
+    """
+    T = len(classes)
+    ci = {c: i for i, c in enumerate(classes)}
+    min_type = min_type if min_type is not None else int(np.ceil((1 - alpha) / alpha))
+    yU_c, yS_c, y_c = [], [], []
+    calS, calY, qS, calNu, qNu, calNuU, calNuS, qNuU, qNuS = [], [], [], [], [], [], [], [], []
+    fs = [_fold_scores(f, classes, k) for f in folds]
+    for f, sc in zip(folds, fs):
+        role = f["tgt_role"]
+        cal = (role == "cal") & np.isin(f["y_tgt"], classes)
+        if labeled_mask is not None:
+            cal &= labeled_mask(f["tgt_names"])
+        q = role == "query"
+        yc = np.array([ci[c] for c in f["y_tgt"][cal]])
+        yU_c.append(hard(sc["PU"][cal])); yS_c.append(hard(sc["PS"][cal])); y_c.append(yc)
+        calS.append(sc["S"][cal][np.arange(cal.sum()), yc]); calY.append(yc); qS.append(sc["S"][q])
+        calNu.append(sc["nu"][cal]); qNu.append(sc["nu"][q])
+        calNuU.append(sc["nu_u"][cal]); qNuU.append(sc["nu_u"][q]); calNuS.append(sc["nu_s"][cal]); qNuS.append(sc["nu_s"][q])
+    yU_c, yS_c, y_c = map(np.concatenate, (yU_c, yS_c, y_c))
+    arb = Arbiter(T, objective=objective).fit(yU_c, yS_c, y_c)
+    # labels from the full model
+    PU, dU = knn_evidence(full["ref_U"], full["y_ref"], full["tgt_U"], classes, k)
+    PS, dS = knn_evidence(full["ref_S"], full["y_ref"], full["tgt_S"], classes, k)
+    label = arb.predict(PU, PS)
+    # Mondrian cross-conformal p-values; types with too few calibration cells use pooled scores
+    counts = np.bincount(y_c, minlength=T)
+    P = _cross_p(calS, calY, qS, None, list(range(T)))
+    pooled = np.where(counts < min_type)[0]
+    if len(pooled):
+        Pp = np.column_stack([_cross_p(calS, [None] * len(folds), [s[:, t] for s in qS], None, [0])[:, 0]
+                              for t in pooled])
+        P[:, pooled] = Pp
+    sets = P > alpha
+    # unknown flag: marginal cross-conformal p-value of the novelty score
+    p_nu = _cross_p(calNu, [None] * len(folds), qNu, None, [0])[:, 0]
+    p_nu_u = _cross_p(calNuU, [None] * len(folds), qNuU, None, [0])[:, 0]
+    p_nu_s = _cross_p(calNuS, [None] * len(folds), qNuS, None, [0])[:, 0]
+    unknown = p_nu <= alpha_unknown
+    # type-conditional variant: group calibration and query cells by their fold-model arbitrated label
+    cal_pred = [arb.predict(np.eye(T)[a], np.eye(T)[b]) for a, b in
+                zip(np.split(yU_c, np.cumsum([len(x) for x in calY])[:-1]),
+                    np.split(yS_c, np.cumsum([len(x) for x in calY])[:-1]))]
+    q_pred = [arb.predict(sc["PU"][f["tgt_role"] == "query"], sc["PS"][f["tgt_role"] == "query"])
+              for f, sc in zip(folds, fs)]
+    p_nu_type = np.ones(len(label))
+    for t in range(T):
+        # use fold 0 predicted label to define the query group (both folds agree in most cells)
+        qmask = q_pred[0] == t
+        if not qmask.any():
+            continue
+        ncal = sum(int((cp == t).sum()) for cp in cal_pred)
+        cs = [cn[cp == t] for cn, cp in zip(calNu, cal_pred)] if ncal >= min_type else calNu
+        qs = [qn[qmask] for qn in qNu]
+        p_nu_type[qmask] = _cross_p(cs, [None] * len(folds), qs, None, [0])[:, 0]
+    unknown_type = p_nu_type <= alpha_unknown
+    nu_full = 0.5 * (dU / loo_scale(full["ref_U"], k) + dS / loo_scale(full["ref_S"], k))
+    # ---- fold-wise p-values combined by Bonferroni (2 x min) and by a random fold: exact 1-alpha guarantees
+    nF = len(folds)
+    a_f = alpha / nF
+    min_f = int(np.ceil((1 - a_f) / a_f))
+    Pf = []
+    for cs, cy, qs in zip(calS, calY, qS):
+        cnt_f = np.bincount(cy, minlength=T)
+        p = np.empty((qs.shape[0], T))
+        for t in range(T):
+            # a type with fewer than (1 - a_f) / a_f calibration cells in the fold keeps its own cells, which
+            # keeps the guarantee and includes the type in every set
+            p[:, t] = _fold_p(cs[cy == t], qs[:, t])
+        Pf.append(p)
+    P_bonf = np.minimum(1.0, nF * np.min(Pf, axis=0))
+    rng = np.random.default_rng(0)
+    pick = rng.integers(0, nF, size=P_bonf.shape[0])
+    P_rand = np.stack(Pf)[pick, np.arange(P_bonf.shape[0])]
+    # marginal unknown flag, Bonferroni over folds
+    au_f = alpha_unknown / nF
+    p_nu_b = np.minimum(1.0, nF * np.min([_fold_p(c, q) for c, q in zip(calNu, qNu)], axis=0))
+    # type-conditional unknown flag grouped by each fold's own scANVI-view evidence label (not fitted on
+    # calibration cells); labels with few training-fold reference cells share one group
+    min_u = int(np.ceil((1 - au_f) / au_f))
+    pt = []
+    for f, sc, cn, qn in zip(folds, fs, calNu, qNu):
+        role = f["tgt_role"]
+        cal = (role == "cal") & np.isin(f["y_tgt"], classes)
+        if labeled_mask is not None:
+            cal &= labeled_mask(f["tgt_names"])
+        ev = hard(sc["PS"])
+        nref = np.array([(f["y_ref"] == c).sum() for c in classes])
+        grp = np.where(nref[ev] >= 2 * min_u, ev, -1)
+        gc, gq = grp[cal], grp[role == "query"]
+        p = np.ones(len(qn))
+        for g in np.unique(gq):
+            cg = cn[gc == g]
+            if len(cg) < min_u:
+                cg = cn
+            p[gq == g] = _fold_p(cg, qn[gq == g])
+        pt.append(p)
+    p_nu_tb = np.minimum(1.0, nF * np.min(pt, axis=0))
+    return dict(pvals_bonf=P_bonf, sets_bonf=P_bonf > alpha, sets_rand=P_rand > alpha,
+                p_unknown_bonf=p_nu_b, unknown_bonf=p_nu_b <= alpha_unknown,
+                p_unknown_type_bonf=p_nu_tb, unknown_type_bonf=p_nu_tb <= alpha_unknown,
+                label=label, yU=hard(PU), yS=hard(PS), yavg=hard(PU + PS), PU=PU, PS=PS, dU=dU, dS=dS,
+                pvals=P, sets=sets, p_unknown=p_nu, unknown=unknown, unknown_type=unknown_type,
+                p_unknown_U=p_nu_u, p_unknown_S=p_nu_s, novelty=nu_full, arbiter=arb,
+                cal_counts=counts, cal=(yU_c, yS_c, y_c))

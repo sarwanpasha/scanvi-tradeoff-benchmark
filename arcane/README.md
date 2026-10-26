@@ -1,37 +1,33 @@
 # ARCANE
 
-ARCANE (arbitration of complementary embeddings for annotation with error control) transfers cell-type labels from an annotated single-cell reference to a query by combining two views of the same cells: an unsupervised scVI embedding and a supervised scANVI embedding.
+ARCANE (arbitration of complementary embeddings for annotation with error control) transfers cell-type labels from an annotated single-cell reference to a query by combining two views of the same cells: an unsupervised scVI embedding (U) and a supervised scANVI embedding (S).
 
-Using cells from reference batches that were held out during training (cross-fitting), ARCANE
+With symmetric cross-fitting, models trained on one half of the reference donors map the other half together with all query cells, so that calibration and query cells are scored by the same model against the same neighbors. From the calibration cells, ARCANE
 
-1. arbitrates between the kNN labels of the two views with the rule that maximizes balanced accuracy, which does not depend on the cell-type composition of the query,
-2. returns class-conditional (Mondrian) conformal prediction sets, and
-3. calls cells unknown when they lie far from the reference in both views, using a scale-free kNN distance and a conformal threshold.
+1. arbitrates between the kNN labels of the two views with the rule that maximizes balanced accuracy (a class-conditional behavior knowledge space rule), which does not depend on the query composition, and reports a near-tie bound on its regret (`bound.py`, `cal_bounds.py`);
+2. returns Mondrian conformal prediction sets with coverage for every cell type (fold p-values combined by Bonferroni), and reports the parent type when a set contains several fine types with one parent;
+3. calls cells unknown when they lie far from the reference, with a false-alarm rate calibrated on the reference folds or, when the query contains control donors, on those controls (leave one donor out).
 
-## Files
+## Layout
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `arcane.py` | The method: kNN evidence, balanced arbitration, conformal sets, novelty score and unknown calls |
-| `prep_data.py` | Writes standardized AnnData files (labels, batches, reference/query roles, cross-fitting folds) |
-| `lupus_download.py`, `hlca_download.py` | Fetch the lupus and HLCA data from CELLxGENE Census |
-| `train.py` | Trains scVI and scANVI on the full reference or on one fold and maps targets with scArches surgery |
-| `celltypist_run.py` | CellTypist baseline |
-| `evaluate.py` | Runs ARCANE and all baselines for one dataset and seed and writes per-type metrics |
-| `aggregate.py` | Summary tables over datasets and seeds |
-| `lupus_bio.py` | Relates unknown calls in lupus to an interferon-stimulated gene score |
-| `make_tasks.py`, `run_all.sh` | Task lists and an end-to-end run |
+| `arcane.py` | The method (`run_arcane_sym`): kNN evidence, arbitration, fold p-values, sets, unknown flags |
+| `train.py` | Trains scVI/scANVI on the full reference or one fold and maps fold + query by scArches surgery; options for label noise, coarse or partial labels, latent size, scANVI epochs, and ISG-blind gene removal |
+| `evaluate2.py` | ARCANE and baselines for one run; writes metrics, per-type tables and per-cell outputs |
+| `aggregate2.py`, `cal_bounds.py`, `bound.py` | Summary tables and near-tie bounds |
+| `prep_data.py`, `*_download.py`, `celltypist_run.py`, `make_tasks2.py` | Data preparation, CellTypist baseline, task lists |
+| `baselines/` | popV, scPoli (and ARCANE on scVI + scPoli), Symphony, scHPL-style rejection, a conformal annotator, scANVI with label-shift correction, and their evaluation |
+| `analysis/` | Disease analyses: lupus deep analysis and controls, ISG-blind comparison, candidate states, interferon-low patients, view divergence, COVID-19 analysis, gene sets |
 
 ## Usage
 
 ```python
-from arcane import run_arcane
-out = run_arcane(ref_U, ref_S, y_ref, tgt_U, tgt_S, cal, classes, k=15, alpha=0.1, alpha_unknown=0.05)
-out["label"], out["sets"], out["unknown"], out["novelty"]
+from arcane import run_arcane_sym
+res = run_arcane_sym(full, [fold0, fold1], classes, k=15, alpha=0.1, alpha_unknown=0.05)
+res["label"], res["sets_bonf"], res["unknown_bonf"], res["novelty"]
 ```
 
-`cal` is a list with one dictionary per cross-fitting fold holding the embeddings of the training fold (`ref_U`, `ref_S`, `y_ref`) and of the held-out fold (`tgt_U`, `tgt_S`, `y_tgt`).
+`full` and the fold dictionaries hold reference and target latents (`ref_U`, `ref_S`, `tgt_U`, `tgt_S`), reference labels (`y_ref`) and, for folds, the role of each target cell (`tgt_role`: `cal` or `query`), as written by `train.py`.
 
-## Requirements
-
-Python 3.10 or later, scvi-tools 1.3.3, scanpy, anndata, scikit-learn, numpy, pandas, scipy, celltypist, cellxgene-census.
+Requirements: scvi-tools 1.3.3, scanpy, anndata, numpy, pandas, scipy, scikit-learn, statsmodels.
